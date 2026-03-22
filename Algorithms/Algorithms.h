@@ -12,7 +12,7 @@
 
 class Algorithm {
 public:
-    virtual std::optional<Process> step(int current_time, Process* currently_running) = 0;
+    virtual Process* step(int current_time, Process* currently_running, std::vector<Process*> arrived_procceses) = 0;
     virtual ~Algorithm() = default;
 };
 #endif

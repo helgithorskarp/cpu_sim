@@ -6,12 +6,10 @@
 
 
 struct result_simulation {
-    int avg_waiting_time;
-    int avg_turnaround_time;
-    int avg_response_time;
-    float cpu_utilization;
-    int total_idle_time;
-    int throughput;          // processes completed per unit time
+    double avg_waiting_time; /// avg waiting time of all FINISHED PROCCESES
+    double avg_turnaround_time; /// avg turnaround time of all FINISHED procceses
+    double avg_response_time; /// avg response time of all proccesses that actually got a run on cpu
+    double throughput;  // if all procceses finished -> Finish time / # procceses, if all procceses did not finish -> Time_line_length / # procceses finished
     std::vector<Process> timeline;
     std::vector<Process> processes;  // final state of all processes for per-process breakdown
 };
@@ -20,7 +18,10 @@ class Cpu {
     public:
         std::vector<Process> time_line; /// Keeps track of what Process in the cpu at time time_line_length.
         int time_line_length;
-        Process running_process;
+        Process *running_process = nullptr;
+        std::vector<Process> processes;
+
+        Cpu(int _time_line_length, std::vector<Process> _processes) : time_line_length(_time_line_length), processes(_processes) {}
 
 
 
