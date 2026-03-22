@@ -13,8 +13,12 @@ Process* SJF::step(int current_time, Process* running, std::vector<Process*> arr
 
     /// if cpu is empty and there exist processes that could possibly run
     if (is_cpu_empty && !existing_procceses.empty()) {
-        new_candidate = existing_procceses[0];
         for (auto& p : existing_procceses) {
+            if (p->remaining_time > 0 && new_candidate == nullptr) {
+                new_candidate = p;
+            } else if (new_candidate == nullptr) {
+                continue;
+            }
 
             /// if this process has less burst time than the best candidate
             /// and also has some remaining time left, then it is the new best candidate

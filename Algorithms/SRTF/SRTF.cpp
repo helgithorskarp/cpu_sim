@@ -16,14 +16,17 @@ Process* SRTF::step(int current_time, Process* running, std::vector<Process*> ar
 
     if (!is_cpu_empty) {
         for (auto& p : arrived) {
-            if (p->remaining_time < running->remaining_time) {
+            if (p->remaining_time > 0 && p->remaining_time < new_candidate->remaining_time) {
                 new_candidate = p;
             }
         }
-
     } else if (is_cpu_empty && !existing_procceses.empty()) {  /// If cpu is empty, Loop trough all procceses and pick the one that has the lowest remaining time left
-        new_candidate = existing_procceses[0];
         for (auto& p : existing_procceses) {
+            if (p->remaining_time > 0 && new_candidate == nullptr) {
+                new_candidate = p;
+            } else if (new_candidate == nullptr) {
+                continue;
+            }
             /// if current process has less remaining time than the best candidate
             /// and has some time left then its the new candidate
             if (p->remaining_time < new_candidate->remaining_time && p->remaining_time > 0) {
