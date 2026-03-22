@@ -1,6 +1,6 @@
 #include "RR.h"
 
-Process* RR::step(int current_time, Process *running, std::vector<Process *> arrived) {
+Process* RR::step(int current_time, Process *running, std::vector<Process*> arrived) {
     /// add all proccesses that just arrived to the ready queue
     for (auto p : arrived) {
         ready_queue.push_back(p);
