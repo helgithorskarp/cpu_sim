@@ -1,12 +1,13 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#include <string>
-#include <vector>
-#include <optional>
 #include <algorithm>
-#include <queue>
+#include <cstdint>
 #include <deque>
 #include <iostream>
+#include <optional>
+#include <queue>
+#include <string>
+#include <vector>
 
 #endif
