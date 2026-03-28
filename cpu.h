@@ -1,7 +1,7 @@
 #ifndef CPU_H
 #define CPU_H
+#include <vector>
 #include "process.h"
-#include "common.h"
 #include "Algorithms/Algorithms.h"
 
 

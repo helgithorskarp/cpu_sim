@@ -1,7 +1,4 @@
 #include "UI.h"
-#include "imgui.h"
-#include "cpu.h"
-#include "Algorithms/SRTF/SRTF.h"
 
 namespace CpuSimUI {
     void RenderUI() {

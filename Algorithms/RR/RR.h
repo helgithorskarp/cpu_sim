@@ -1,5 +1,8 @@
+#ifndef RR_H
+#define RR_H
+#include <deque>
+#include <cstdint>
 #include "../Algorithms.h"
-#include "../../common.h"
 
 class RR : public Algorithm {
 public:
@@ -12,3 +15,4 @@ public:
 
     Process* step(int current_time, Process* running, std::vector<Process*> arrived) override;
 };
+#endif

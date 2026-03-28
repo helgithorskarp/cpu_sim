@@ -1,6 +1,6 @@
 #ifndef ALGORITHM_H
 #define ALGORITHM_H
-#include "../common.h"
+#include <vector>
 #include "../process.h"
 
 

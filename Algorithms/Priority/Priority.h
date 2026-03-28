@@ -1,5 +1,8 @@
+#ifndef PRIORITY_H
+#define PRIORITY_H
+#include <deque>
+#include <algorithm>
 #include "../Algorithms.h"
-#include "../../common.h"
 
 class Priority : public Algorithm {
 public:
@@ -9,3 +12,4 @@ public:
 
     Process* step(int current_time, Process* running, std::vector<Process*> arrived) override;
 };
+#endif
