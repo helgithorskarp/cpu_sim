@@ -1,14 +1,23 @@
 #include "UI.h"
+#include "imgui.h"
 
 namespace CpuSimUI {
+    // static variables at the top in case they need to be modified
+    // by functions outside of RenderUI()
     static std::vector<Process> processes;
+    static std::map<int, std::vector<process_time_seg>> pid_segments;
     static int n_pid = 1;
+    static int n_sim_runs = 0;
     static std::string add_process_status_msg = "";
     static std::vector<algorithm_listing> algorithms;
     static result_simulation simulation_results;
     static std::set<int> unique_pids;
     static std::map<int, Process> pid_to_process;
+    static float offset = 0.0f;
+    static float offset_max = 0.0f;
 
+    // Setup Dockspace provided by ImGui
+    // Boilerplate from ImGui examples
     void SetDockspace() {
         static bool opt_fullscreen = true;
         static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
@@ -26,19 +35,44 @@ namespace CpuSimUI {
         }
 
         ImGui::Begin("Dockspace Parent", nullptr, window_flags);
-        if (opt_fullscreen) ImGui::PopStyleVar(2);
+            if (opt_fullscreen) ImGui::PopStyleVar(2);
 
-        ImGuiIO& io = ImGui::GetIO();
-        if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable) {
-            ImGuiID dockspace_id = ImGui::GetID("Dockspace");
+            ImGuiID dockspace_id = ImGui::GetID("MyDockSpace"); // Give it a unique string name
+
+            // 1. Check if the dockspace needs initialization
+            // We use DockBuilderGetNode to see if it already exists
+            if (ImGui::DockBuilderGetNode(dockspace_id) == nullptr) {
+
+                // 2. Clear out any old state and start fresh
+                ImGui::DockBuilderRemoveNode(dockspace_id);
+                ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
+                ImGui::DockBuilderSetNodeSize(dockspace_id, ImGui::GetMainViewport()->WorkSize);
+
+                // 3. Create your splits
+                ImGuiID dock_id_main = dockspace_id;
+                ImGuiID dock_id_down = ImGui::DockBuilderSplitNode(dock_id_main, ImGuiDir_Down, 0.6f, nullptr, &dock_id_main);
+                ImGuiID dock_id_right = ImGui::DockBuilderSplitNode(dock_id_main, ImGuiDir_Right, 0.5f, nullptr, &dock_id_main);
+                ImGuiID dock_id_main_bottom = ImGui::DockBuilderSplitNode(dock_id_main, ImGuiDir_Down, 0.5f, nullptr, &dock_id_main);
+
+
+                // 4. Dock your windows by name
+                ImGui::DockBuilderDockWindow("Create Process", dock_id_main);
+                ImGui::DockBuilderDockWindow("Processes", dock_id_right);
+                ImGui::DockBuilderDockWindow("Results", dock_id_down); // Center
+                ImGui::DockBuilderDockWindow("Simulation", dock_id_main_bottom);
+
+                // 5. Finalize
+                ImGui::DockBuilderFinish(dockspace_id);
+            }
+
+            // 6. NOW call the actual DockSpace function
             ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
-        }
-        else {
-            ImGui::Text("ERROR: Docking is not enabled in io.ConfigFlags");
-        }
-        ImGui::End();
+
+            ImGui::End();
     }
 
+    // Initialize the list of algorithms to be used in the simulation
+    // TODO: Allow custom Round Robin quantum slice
     void InitAlgorithms() {
         algorithms.push_back({std::make_shared<FCFS>(), "First Come, First Serve", "FCFS"});
         algorithms.push_back({std::make_shared<RR>(1), "Round Robin", "RR"});
@@ -46,6 +80,8 @@ namespace CpuSimUI {
         algorithms.push_back({std::make_shared<SRTF>(), "Shortest Remaining Time First", "SRTF"});
     }
 
+    // Create a new process with the given name, arrival time, and burst time
+    // Returns 0 on success, error code otherwise
     int CreateProcess(std::string name, int arrival_time, int burst_time) {
         if (name.empty())
             return PADD_EMPTY_NAME;
@@ -53,15 +89,12 @@ namespace CpuSimUI {
             if (p.name == name)
                 return PADD_EXISTS;
         }
-        Process p;
-        p.name = name;
-        p.arrival_time = arrival_time;
-        p.burst_time = burst_time;
-        p.pid = n_pid++;
-        processes.push_back(p);
+        processes.emplace_back(arrival_time, burst_time, n_pid++, name);
         return 0;
     }
 
+    // Start a simulation using the given algorithm
+    // Returns 0 on success, error code otherwise
     int StartSimulation(std::shared_ptr<Algorithm> algorithm) {
         if (processes.empty())
             return SIM_EMPTY_PROCESSES;
@@ -71,16 +104,45 @@ namespace CpuSimUI {
         for (const auto& p : processes) {
             total_time += p.burst_time;
         }
-        Cpu cpu(total_time, processes);
+        Cpu cpu((total_time < 100) ? 100 : total_time, processes);
         simulation_results = cpu.run_scheduling_sim(*algorithm);
-        for (const auto& p : simulation_results.timeline) {
-            unique_pids.insert(p.pid);
-            pid_to_process[p.pid] = p;
-            std::cout << p.pid << ": " << p.name << std::endl;
+
+        // Clear previous simulation results and populate pid_segments for rendering
+        unique_pids.clear();
+        pid_to_process.clear();
+        pid_segments.clear();
+        if (!simulation_results.timeline.empty()) {
+            for (const auto& p : simulation_results.timeline) {
+                unique_pids.insert(p.pid);
+                pid_to_process[p.pid] = p;
+            }
+
+            int current_pid = simulation_results.timeline[0].pid;
+            int start_time = 0;
+
+            // Combine consecutive segments of the same pid into a single segment
+            for (int i = 1; i <= simulation_results.timeline.size(); ++i) {
+                if (i == simulation_results.timeline.size() || simulation_results.timeline[i].pid != current_pid) {
+                    pid_segments[current_pid].push_back({start_time, i - start_time});
+                    if (i <simulation_results.timeline.size()) {
+                        current_pid = simulation_results.timeline[i].pid;
+                        start_time = i;
+                    }
+                }
+            }
         }
         return 0;
     }
 
+    // For scrolling the timeline
+    void CalculateTimelineOffset() {
+        offset_max = 0.0f;
+        for (const auto& p : processes) {
+            offset_max += p.burst_time;
+        }
+    }
+
+    // Main UI rendering
     void RenderUI() {
         /*
          * BEGIN - Create process
@@ -93,9 +155,10 @@ namespace CpuSimUI {
 
         ImGui::Begin("Create Process", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
         ImGui::InputText("Process Name", &n_process_name);
-        ImGui::SliderInt("Arrival Time", &n_arrival_time, 0, 100);
-        ImGui::SliderInt("Burst Time", &n_burst_time, 1, 100);
-        ImGui::Spacing();
+        ImGui::SliderInt("Arrival Time", &n_arrival_time, 0, 50);
+        ImGui::SliderInt("Burst Time", &n_burst_time, 1, 10);
+
+        ImGui::Text("%s", (add_process_status_msg.length() == 0) ? "" : add_process_status_msg.c_str());
 
         if (ImGui::Button("Add Process")) {
             int padd_status = CreateProcess(n_process_name, n_arrival_time, n_burst_time);
@@ -106,9 +169,25 @@ namespace CpuSimUI {
             else
                 add_process_status_msg = std::format("Process \"{}\" (PID: {}) added", n_process_name, n_pid - 1);
         }
-
         ImGui::SameLine(0, -1);
-        ImGui::Text("%s", (add_process_status_msg.length() == 0) ? "" : add_process_status_msg.c_str());
+
+        if (ImGui::Button("Add Random Process")) {
+            n_arrival_time = std::rand() % 50;
+            n_burst_time = std::rand() % 9 + 1;
+            std::string n_process_name = std::format("Process {}", n_pid);
+            CreateProcess(n_process_name.c_str(), n_arrival_time, n_burst_time);
+            add_process_status_msg = std::format("Random process (PID: {}) added", n_pid - 1);
+        }
+
+        if (ImGui::Button("Add TOO MANY Processes")) {
+            for (int i = 0; i < 1000; ++i) {
+                n_arrival_time = std::rand() % 50;
+                n_burst_time = std::rand() % 9 + 1;
+                std::string n_process_name = std::format("Process {}", i);
+                CreateProcess(n_process_name.c_str(), n_arrival_time, n_burst_time);
+            }
+            add_process_status_msg = "A ridiculous amount of processes have been added";
+        }
         ImGui::End();
         /*
          * END - Create process
@@ -176,6 +255,7 @@ namespace CpuSimUI {
             else if (simulation_status == SIM_EMPTY_PROCESSES)
                 simulation_status_msg = "Please add at least one process";
             else {
+                CalculateTimelineOffset();
                 simulation_status_msg = std::format("Successfully ran {}", algorithms[selected_algorithm_idx].ident);
             }
         };
@@ -190,16 +270,19 @@ namespace CpuSimUI {
          */
         ImGui::Begin("Results", nullptr);
 
-        static ImGuiTableFlags results_table_flags = ImGuiTableFlags_Borders | ImGuiTableFlags_ScrollX | ImGuiTableFlags_Resizable;
+        static ImGuiTableFlags results_table_flags = ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable;
         static float slot_w = 15.0f;
         static float row_h = 25.0f;
 
-        if (ImGui::BeginTable("Gantt Chart", 2, results_table_flags)) {
-            ImGui::TableSetupColumn("Process", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+        ImGui::SliderFloat("Offset", &offset, 0.0f, offset_max, "%.1f");
+        ImGui::SliderFloat("Zoom", &slot_w, 1.0f, 100.0f, "%.1f");
+        ImGui::SliderFloat("Row Height", &row_h, 25.0f, 100.0f, "%.1f");
+
+        if (ImGui::BeginTable("Gantt Chart", 2, results_table_flags, ImVec2(0.0f, 0.0f))) {
+            std::vector<Process> timeline = simulation_results.timeline;
+            ImGui::TableSetupColumn("Process", ImGuiTableColumnFlags_WidthFixed, 200.0f);
             ImGui::TableSetupColumn("Timeline", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableHeadersRow();
-
-            std::vector<Process> timeline = simulation_results.timeline;
 
             if (!timeline.empty()) {
                 for (int pid : unique_pids) {
@@ -208,23 +291,40 @@ namespace CpuSimUI {
                     ImGui::TableSetColumnIndex(0);
                     ImGui::AlignTextToFramePadding();
                     ImGui::Text("%s", pid_to_process[pid].name.c_str());
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::BeginTooltip();
+                        ImGui::Text("Response Time: %d", pid_to_process[pid].response_time);
+                        ImGui::Text("Completion Time: %d", pid_to_process[pid].completion_time);
+                        ImGui::EndTooltip();
+                    }
+                    ImGui::SameLine(0, -1);
                     ImGui::TextDisabled("PID: %d", pid);
 
                     ImGui::TableSetColumnIndex(1);
                     ImVec2 start_pos = ImGui::GetCursorScreenPos();
                     ImDrawList* dl = ImGui::GetWindowDrawList();
 
-                    for (int i = 0; i < timeline.size(); ++i) {
-                        if (timeline[i].pid == pid) {
-                            ImVec2 b_min = ImVec2(start_pos.x + (i * slot_w), start_pos.y);
-                            ImVec2 b_max = ImVec2(b_min.x + slot_w, start_pos.y + row_h);
+                    ImRect cell_rect = ImGui::TableGetCellBgRect(ImGui::GetCurrentTable(), 1);
 
-                            ImU32 color = ImColor::HSV(pid * 0.16f, 0.7f, 0.8f);
+                    ImGui::PushClipRect(cell_rect.Min, cell_rect.Max, true);
+                    for (const auto& seg : pid_segments[pid]) {
+                        float x_start = (seg.start_time - offset) * slot_w;
+                        float x_end = seg.duration * slot_w;
 
+                        if (x_start + x_end < 0)
+                            continue;
+                        if (x_start > cell_rect.Max.x - cell_rect.Min.x)
+                            break;
+
+                        ImVec2 b_min = ImVec2(start_pos.x + x_start, start_pos.y);
+                        ImVec2 b_max = ImVec2(b_min.x + x_end, start_pos.y + row_h);
+
+                        if (b_max.x > cell_rect.Min.x && b_min.x < cell_rect.Max.x) {
+                            ImU32 color = ImColor::HSV(fmodf(pid * 0.618f, 1.0f), 0.7f, 0.8f);
                             dl->AddRectFilled(b_min, b_max, color);
-                            dl->AddLine(ImVec2(b_max.x, b_min.y), ImVec2(b_max.x, b_max.y), IM_COL32(255,255,255,30));
                         }
                     }
+                    ImGui::PopClipRect();
                 }
                 ImGui::Dummy(ImVec2(timeline.size() * slot_w, row_h));
             }

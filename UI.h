@@ -2,6 +2,7 @@
 #define UI_H
 #include "imgui.h"
 #include "imgui_stdlib.h"
+#include "imgui_internal.h"
 #include "cpu.h"
 #include "Algorithms.h"
 #include "Algorithms/FCFS/FCFS.h"
@@ -13,6 +14,7 @@
 #include <set>
 #include <map>
 #include <iostream>
+#include <cmath>
 
 namespace CpuSimUI {
     enum {
@@ -27,6 +29,10 @@ namespace CpuSimUI {
         std::shared_ptr<Algorithm> algorithm;
         std::string name;
         std::string ident;
+    };
+    struct process_time_seg {
+        int start_time;
+        int duration;
     };
     void SetDockspace();
     int CreateProcess(std::string name, int arrival_time, int burst_time);

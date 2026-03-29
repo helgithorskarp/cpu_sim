@@ -189,7 +189,6 @@ int main(int, char **) {
 
     CpuSimUI::SetDockspace();
     CpuSimUI::RenderUI();
-    ImGui::ShowDemoWindow();
 
     // User code exit :(
 
