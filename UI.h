@@ -10,6 +10,9 @@
 #include "Algorithms/SRTF/SRTF.h"
 #include <format>
 #include <memory>
+#include <set>
+#include <map>
+#include <iostream>
 
 namespace CpuSimUI {
     enum {

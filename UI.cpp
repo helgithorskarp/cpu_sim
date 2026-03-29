@@ -1,6 +1,4 @@
 #include "UI.h"
-#include "cpu.h"
-#include "imgui.h"
 
 namespace CpuSimUI {
     static std::vector<Process> processes;
@@ -8,6 +6,8 @@ namespace CpuSimUI {
     static std::string add_process_status_msg = "";
     static std::vector<algorithm_listing> algorithms;
     static result_simulation simulation_results;
+    static std::set<int> unique_pids;
+    static std::map<int, Process> pid_to_process;
 
     void SetDockspace() {
         static bool opt_fullscreen = true;
@@ -49,7 +49,7 @@ namespace CpuSimUI {
     int CreateProcess(std::string name, int arrival_time, int burst_time) {
         if (name.empty())
             return PADD_EMPTY_NAME;
-        for (Process& p : processes) {
+        for (const auto& p : processes) {
             if (p.name == name)
                 return PADD_EXISTS;
         }
@@ -62,13 +62,22 @@ namespace CpuSimUI {
         return 0;
     }
 
-    int StartSimulation(std::shared_ptr<Algorithm> algorithm, int total_time) {
+    int StartSimulation(std::shared_ptr<Algorithm> algorithm) {
         if (processes.empty())
             return SIM_EMPTY_PROCESSES;
         if (algorithm == nullptr)
             return SIM_ALG_NULLPTR;
+        int total_time = 0;
+        for (const auto& p : processes) {
+            total_time += p.burst_time;
+        }
         Cpu cpu(total_time, processes);
         simulation_results = cpu.run_scheduling_sim(*algorithm);
+        for (const auto& p : simulation_results.timeline) {
+            unique_pids.insert(p.pid);
+            pid_to_process[p.pid] = p;
+            std::cout << p.pid << ": " << p.name << std::endl;
+        }
         return 0;
     }
 
@@ -95,7 +104,7 @@ namespace CpuSimUI {
             else if (padd_status == PADD_EXISTS)
                 add_process_status_msg = std::format("Process \"{}\" already exists", n_process_name);
             else
-                add_process_status_msg = std::format("Process \"{}\" (PID: {}) added", n_process_name, n_pid);
+                add_process_status_msg = std::format("Process \"{}\" (PID: {}) added", n_process_name, n_pid - 1);
         }
 
         ImGui::SameLine(0, -1);
@@ -110,23 +119,25 @@ namespace CpuSimUI {
          */
         ImGui::Begin("Processes", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
-        if (ImGui::BeginTable("Processes", 4)) {
+        static ImGuiTableFlags processes_table_flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg;
+
+        if (ImGui::BeginTable("Processes", 4, processes_table_flags)) {
             ImGui::TableSetupColumn("PID");
-            ImGui::TableSetupColumn("Name");
+            ImGui::TableSetupColumn("Process Name");
             ImGui::TableSetupColumn("Arrival Time");
             ImGui::TableSetupColumn("Burst Time");
             ImGui::TableHeadersRow();
 
-            for (int row = 0; row < processes.size(); ++row) {
+            for (int i = 0; i < processes.size(); ++i) {
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
-                ImGui::Text("%d", processes[row].pid);
+                ImGui::Text("%d", processes[i].pid);
                 ImGui::TableSetColumnIndex(1);
-                ImGui::Text("%s", processes[row].name.c_str());
+                ImGui::Text("%s", processes[i].name.c_str());
                 ImGui::TableSetColumnIndex(2);
-                ImGui::Text("%d", processes[row].arrival_time);
+                ImGui::Text("%d", processes[i].arrival_time);
                 ImGui::TableSetColumnIndex(3);
-                ImGui::Text("%d", processes[row].burst_time);
+                ImGui::Text("%d", processes[i].burst_time);
             }
             ImGui::EndTable();
         }
@@ -145,12 +156,12 @@ namespace CpuSimUI {
         static const char* selected_algorithm_preview = "Select an algorithm";
 
         if (ImGui::BeginCombo("Algorithms", selected_algorithm_preview)) {
-            for (int n = 0; n < algorithms.size(); ++n) {
-                const bool is_selected = (selected_algorithm_idx == n);
-                if (ImGui::Selectable(algorithms[n].name.c_str(), is_selected)) {
-                    selected_algorithm_idx = n;
-                    selected_algorithm_preview = algorithms[n].name.c_str();
-                    selected_algorithm = algorithms[n].algorithm;
+            for (int i = 0; i < algorithms.size(); ++i) {
+                const bool is_selected = (selected_algorithm_idx == i);
+                if (ImGui::Selectable(algorithms[i].name.c_str(), is_selected)) {
+                    selected_algorithm_idx = i;
+                    selected_algorithm_preview = algorithms[i].name.c_str();
+                    selected_algorithm = algorithms[i].algorithm;
                 }
                 if (is_selected)
                     ImGui::SetItemDefaultFocus();
@@ -159,13 +170,14 @@ namespace CpuSimUI {
         }
 
         if (ImGui::Button("Run Simulation")) {
-            int simulation_status = StartSimulation(selected_algorithm, 100);
+            int simulation_status = StartSimulation(selected_algorithm);
             if (simulation_status == SIM_ALG_NULLPTR)
                 simulation_status_msg = "Please select an algorithm";
             else if (simulation_status == SIM_EMPTY_PROCESSES)
                 simulation_status_msg = "Please add at least one process";
-            else
+            else {
                 simulation_status_msg = std::format("Successfully ran {}", algorithms[selected_algorithm_idx].ident);
+            }
         };
         ImGui::Text("%s", simulation_status_msg.c_str());
         ImGui::End();
@@ -176,7 +188,48 @@ namespace CpuSimUI {
         /*
          * BEGIN - Show simulation results
          */
-        ImGui::Begin("Results", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::Begin("Results", nullptr);
+
+        static ImGuiTableFlags results_table_flags = ImGuiTableFlags_Borders | ImGuiTableFlags_ScrollX | ImGuiTableFlags_Resizable;
+        static float slot_w = 15.0f;
+        static float row_h = 25.0f;
+
+        if (ImGui::BeginTable("Gantt Chart", 2, results_table_flags)) {
+            ImGui::TableSetupColumn("Process", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+            ImGui::TableSetupColumn("Timeline", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableHeadersRow();
+
+            std::vector<Process> timeline = simulation_results.timeline;
+
+            if (!timeline.empty()) {
+                for (int pid : unique_pids) {
+                    ImGui::TableNextRow(ImGuiTableRowFlags_None, row_h);
+
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::Text("%s", pid_to_process[pid].name.c_str());
+                    ImGui::TextDisabled("PID: %d", pid);
+
+                    ImGui::TableSetColumnIndex(1);
+                    ImVec2 start_pos = ImGui::GetCursorScreenPos();
+                    ImDrawList* dl = ImGui::GetWindowDrawList();
+
+                    for (int i = 0; i < timeline.size(); ++i) {
+                        if (timeline[i].pid == pid) {
+                            ImVec2 b_min = ImVec2(start_pos.x + (i * slot_w), start_pos.y);
+                            ImVec2 b_max = ImVec2(b_min.x + slot_w, start_pos.y + row_h);
+
+                            ImU32 color = ImColor::HSV(pid * 0.16f, 0.7f, 0.8f);
+
+                            dl->AddRectFilled(b_min, b_max, color);
+                            dl->AddLine(ImVec2(b_max.x, b_min.y), ImVec2(b_max.x, b_max.y), IM_COL32(255,255,255,30));
+                        }
+                    }
+                }
+                ImGui::Dummy(ImVec2(timeline.size() * slot_w, row_h));
+            }
+            ImGui::EndTable();
+        }
         ImGui::End();
         /*
          * END - Show simulation results
