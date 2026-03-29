@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
 project(cpu_sim)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(FetchContent)
 
@@ -26,11 +27,14 @@ file(GLOB IMGUI_SOURCES
     "${imgui_SOURCE_DIR}/*.cpp"
     "${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp"
     "${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp"
+    "${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp"
 )
 
 add_library(imgui STATIC ${IMGUI_SOURCES})
-target_include_directories(imgui
-    PUBLIC ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends
+target_include_directories(imgui PUBLIC
+    ${imgui_SOURCE_DIR}
+    ${imgui_SOURCE_DIR}/backends
+    ${imgui_SOURCE_DIR}/misc/cpp
 )
 target_link_libraries(imgui
     PUBLIC glfw

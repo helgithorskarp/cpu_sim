@@ -1,44 +1,13 @@
 #include "UI.h"
+#include "cpu.h"
+#include "imgui.h"
 
 namespace CpuSimUI {
-    void RenderUI() {
-        static result_simulation last_run_results;
-        static bool data_exists = false;
-
-        ImGui::Begin("CPU Simulator");
-
-        if (ImGui::Button("Start SRTF")) {
-            SRTF alg;
-            std::vector<Process> processes = {
-                Process(0, 8, 1, "P1"),  // long job, heavily starved
-                Process(1, 4, 2, "P2"),  // preempts P1
-                Process(2, 2, 3, "P3"),  // preempts P2
-                Process(3, 1, 4, "P4"),  // ties with P3 remaining
-                Process(4, 3, 5, "P5"),  // gets starved for a while
-                Process(6, 1, 6, "P6"),  // preempts P2 mid-run
-                Process(8, 5, 7, "P7"),  // long wait
-                Process(9, 2, 8, "P8"),  // short, jumps queue
-                Process(12, 1, 9, "P9"), // preempts P5
-            };
-            Cpu cpu(25, processes);
-
-            last_run_results = cpu.run_scheduling_sim(alg);
-            data_exists = true;
-        }
-
-        ImGui::Separator();
-
-        if (data_exists) {
-            ImGui::Text("Simulation finished.");
-            for (Process& p : last_run_results.timeline) {
-                ImGui::Text("Process %s arrived at %d and ended at %d", p.name.c_str(), p.arrival_time, p.completion_time);
-            }
-        }
-        else {
-            ImGui::Text("No simulation data yet.");
-        }
-        ImGui::End();
-    }
+    static std::vector<Process> processes;
+    static int n_pid = 1;
+    static std::string add_process_status_msg = "";
+    static std::vector<algorithm_listing> algorithms;
+    static result_simulation simulation_results;
 
     void SetDockspace() {
         static bool opt_fullscreen = true;
@@ -68,5 +37,149 @@ namespace CpuSimUI {
             ImGui::Text("ERROR: Docking is not enabled in io.ConfigFlags");
         }
         ImGui::End();
+    }
+
+    void InitAlgorithms() {
+        algorithms.push_back({std::make_shared<FCFS>(), "First Come, First Serve", "FCFS"});
+        algorithms.push_back({std::make_shared<RR>(1), "Round Robin", "RR"});
+        algorithms.push_back({std::make_shared<SJF>(), "Shortest Job First", "SJF"});
+        algorithms.push_back({std::make_shared<SRTF>(), "Shortest Remaining Time First", "SRTF"});
+    }
+
+    int CreateProcess(std::string name, int arrival_time, int burst_time) {
+        if (name.empty())
+            return PADD_EMPTY_NAME;
+        for (Process& p : processes) {
+            if (p.name == name)
+                return PADD_EXISTS;
+        }
+        Process p;
+        p.name = name;
+        p.arrival_time = arrival_time;
+        p.burst_time = burst_time;
+        p.pid = n_pid++;
+        processes.push_back(p);
+        return 0;
+    }
+
+    int StartSimulation(std::shared_ptr<Algorithm> algorithm, int total_time) {
+        if (processes.empty())
+            return SIM_EMPTY_PROCESSES;
+        if (algorithm == nullptr)
+            return SIM_ALG_NULLPTR;
+        Cpu cpu(total_time, processes);
+        simulation_results = cpu.run_scheduling_sim(*algorithm);
+        return 0;
+    }
+
+    void RenderUI() {
+        /*
+         * BEGIN - Create process
+         */
+        static std::string n_process_name;
+        static int n_arrival_time = 0;
+        static int n_burst_time = 1;
+        if (algorithms.empty())
+            InitAlgorithms();
+
+        ImGui::Begin("Create Process", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::InputText("Process Name", &n_process_name);
+        ImGui::SliderInt("Arrival Time", &n_arrival_time, 0, 100);
+        ImGui::SliderInt("Burst Time", &n_burst_time, 1, 100);
+        ImGui::Spacing();
+
+        if (ImGui::Button("Add Process")) {
+            int padd_status = CreateProcess(n_process_name, n_arrival_time, n_burst_time);
+            if (padd_status == PADD_EMPTY_NAME)
+                add_process_status_msg = "Process name cannot be empty";
+            else if (padd_status == PADD_EXISTS)
+                add_process_status_msg = std::format("Process \"{}\" already exists", n_process_name);
+            else
+                add_process_status_msg = std::format("Process \"{}\" (PID: {}) added", n_process_name, n_pid);
+        }
+
+        ImGui::SameLine(0, -1);
+        ImGui::Text("%s", (add_process_status_msg.length() == 0) ? "" : add_process_status_msg.c_str());
+        ImGui::End();
+        /*
+         * END - Create process
+         */
+
+        /*
+         * BEGIN - Processes list
+         */
+        ImGui::Begin("Processes", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+
+        if (ImGui::BeginTable("Processes", 4)) {
+            ImGui::TableSetupColumn("PID");
+            ImGui::TableSetupColumn("Name");
+            ImGui::TableSetupColumn("Arrival Time");
+            ImGui::TableSetupColumn("Burst Time");
+            ImGui::TableHeadersRow();
+
+            for (int row = 0; row < processes.size(); ++row) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::Text("%d", processes[row].pid);
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text("%s", processes[row].name.c_str());
+                ImGui::TableSetColumnIndex(2);
+                ImGui::Text("%d", processes[row].arrival_time);
+                ImGui::TableSetColumnIndex(3);
+                ImGui::Text("%d", processes[row].burst_time);
+            }
+            ImGui::EndTable();
+        }
+        ImGui::End();
+        /*
+         * END - Processes list
+         */
+
+        /*
+         * BEGIN - Run simulation
+         */
+        ImGui::Begin("Simulation", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+        static std::string simulation_status_msg = "";
+        static int selected_algorithm_idx = 0;
+        static std::shared_ptr<Algorithm> selected_algorithm;
+        static const char* selected_algorithm_preview = "Select an algorithm";
+
+        if (ImGui::BeginCombo("Algorithms", selected_algorithm_preview)) {
+            for (int n = 0; n < algorithms.size(); ++n) {
+                const bool is_selected = (selected_algorithm_idx == n);
+                if (ImGui::Selectable(algorithms[n].name.c_str(), is_selected)) {
+                    selected_algorithm_idx = n;
+                    selected_algorithm_preview = algorithms[n].name.c_str();
+                    selected_algorithm = algorithms[n].algorithm;
+                }
+                if (is_selected)
+                    ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
+        }
+
+        if (ImGui::Button("Run Simulation")) {
+            int simulation_status = StartSimulation(selected_algorithm, 100);
+            if (simulation_status == SIM_ALG_NULLPTR)
+                simulation_status_msg = "Please select an algorithm";
+            else if (simulation_status == SIM_EMPTY_PROCESSES)
+                simulation_status_msg = "Please add at least one process";
+            else
+                simulation_status_msg = std::format("Successfully ran {}", algorithms[selected_algorithm_idx].ident);
+        };
+        ImGui::Text("%s", simulation_status_msg.c_str());
+        ImGui::End();
+        /*
+         * END - Run simulation
+         */
+
+        /*
+         * BEGIN - Show simulation results
+         */
+        ImGui::Begin("Results", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::End();
+        /*
+         * END - Show simulation results
+         */
     }
 }

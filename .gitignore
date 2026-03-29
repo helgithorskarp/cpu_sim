@@ -15,6 +15,7 @@ CTestTestfile.cmake
 _deps
 build/
 imgui.ini
+.clang-format
 
 
 ### CMake Patch ###
