@@ -1,5 +1,7 @@
+#ifndef FCFS_H
+#define FCFS_H
+#include <deque>
 #include "../Algorithms.h"
-#include "../../common.h"
 
 class FCFS : public Algorithm {
 public:
@@ -9,3 +11,4 @@ public:
 
     Process* step(int current_time, Process* running, std::vector<Process*> arrived) override;
 };
+#endif
