@@ -4,41 +4,53 @@ A C++23 CPU scheduling visualizer using ImGui and GLFW.
 
 ## Prerequisites
 
-* Clone the repository
+Cloning the repository:
 ```bash
-git clone https://github.com/helgithorskarp/cpu_sim.git
-cd cpu_sim
+git clone https://github.com/helgithorskarp/cpu_sim.git && cd cpu_sim
 ```
 
+The following are required to build the project regardless of platform:
+* **C++ compiler** with C++23 support
+* **CMake 3.20+**
+* **Ninja**
+
 ### Windows
-* __MSVC 17.4+__ *(Visual Studio 2022)*
-* [__CMake (direct link)__](https://cmake.org/download/)
-* __Ninja__ *(via package manager)*
+* **MSVC 17.4+** *(Visual Studio 2022)* — install the "Desktop development with C++" workload
+* **CMake** — [direct download](https://cmake.org/download/) or via package manager
+* **Ninja** — via any of the following:
 ```bash
-winget install ninja
+winget install Ninja-build.Ninja
 scoop install ninja
 choco install ninja
 ```
 
-
 ### macOS
-* __Apple Clang 15+__
-* __CMake__ *(via package manager)*
-* __Ninja__ *(via package manager)*
+* **Apple Clang 15+** *(Xcode 15 or later)*
+* **CMake** and **Ninja** via Homebrew:
 ```bash
-brew install cmake
-brew install ninja
+brew install cmake ninja
 ```
 
 ### Linux
-* __GCC 13+ or Clang 16+__
-* __CMake__ *(via package manager)*
-* __Ninja__ *(via package manager)*
-* __Graphics Development Libraries__ *(via package manager)*:
+
+**Ubuntu / Debian**
 ```bash
-sudo apt install cmake ninja-build build-essential libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev
-sudo pacman -S cmake ninja-build build-essential libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev
-yay -S install cmake ninja-build build-essential libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev
+sudo apt install cmake ninja-build build-essential \
+  libx11-dev libxrandr-dev libxinerama-dev \
+  libxcursor-dev libxi-dev libgl1-mesa-dev
+```
+
+**Arch / Manjaro**
+```bash
+sudo pacman -S cmake ninja base-devel \
+  libx11 libxrandr libxinerama libxcursor libxi mesa
+```
+
+**Fedora**
+```bash
+sudo dnf install cmake ninja-build gcc-c++ \
+  libX11-devel libXrandr-devel libXinerama-devel \
+  libXcursor-devel libXi-devel mesa-libGL-devel
 ```
 
 ---
