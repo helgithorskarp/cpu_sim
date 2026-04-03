@@ -9,6 +9,7 @@
 #include "Algorithms/RR/RR.h"
 #include "Algorithms/SJF/SJF.h"
 #include "Algorithms/SRTF/SRTF.h"
+#include "Algorithms/Priority/Priority.h"
 #include <format>
 #include <memory>
 #include <set>
@@ -19,7 +20,8 @@
 namespace CpuSimUI {
     enum {
         PADD_EXISTS = 1,
-        PADD_EMPTY_NAME
+        PADD_EMPTY_NAME,
+        PADD_MAX_PROCESSES
     };
     enum {
         SIM_EMPTY_PROCESSES = 1,

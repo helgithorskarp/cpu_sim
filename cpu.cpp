@@ -5,7 +5,7 @@ result_simulation Cpu::run_scheduling_sim(Algorithm& scheduling_algorithm) {
     int finish_time;
 
     /// Process with id -1, in timeline represents nothing being running
-    Process empty_process(-1, -1, -1, "EMPTY", -1);
+    Process empty_process(-1, -1, -1, "IDLE", -1);
 
     for (int i = 0; i < time_line_length; i++) {
         /// get all procceses that arrived at this time slice
