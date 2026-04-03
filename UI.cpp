@@ -1,4 +1,5 @@
 #include "UI.h"
+
 #include "imgui.h"
 
 namespace CpuSimUI {
@@ -63,7 +64,6 @@ void SetDockspace() {
   // 1. Check if the dockspace needs initialization
   // We use DockBuilderGetNode to see if it already exists
   if (ImGui::DockBuilderGetNode(dockspace_id) == nullptr) {
-
     // 2. Clear out any old state and start fresh
     ImGui::DockBuilderRemoveNode(dockspace_id);
     ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
@@ -249,7 +249,6 @@ void RenderUI() {
   ImGui::Begin("Processes", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
   if (!processes.empty()) {
-
     if (ImGui::BeginTable("Processes", 5, processes_table_flags)) {
       ImGui::TableSetupColumn("PID");
       ImGui::TableSetupColumn("Process Name");

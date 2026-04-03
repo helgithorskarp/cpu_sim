@@ -1,4 +1,4 @@
-# CPU Scheduler Simulator
+#CPU Scheduler Simulator
 
 A C++23 CPU scheduling visualizer using ImGui and GLFW.
 

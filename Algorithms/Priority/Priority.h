@@ -1,15 +1,17 @@
 #ifndef PRIORITY_H
 #define PRIORITY_H
-#include <deque>
 #include <algorithm>
+#include <deque>
+
 #include "../Algorithms.h"
 
 class Priority : public Algorithm {
 public:
-    std::deque<Process*> ready_queue;
+  std::deque<Process *> ready_queue;
 
-    Priority() {}
+  Priority() {}
 
-    Process* step(int current_time, Process* running, std::vector<Process*> arrived) override;
+  Process *step(int current_time, Process *running,
+                std::vector<Process *> arrived) override;
 };
 #endif

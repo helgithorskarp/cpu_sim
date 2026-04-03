@@ -1,18 +1,19 @@
 #ifndef RR_H
 #define RR_H
-#include <deque>
 #include <cstdint>
+#include <deque>
+
 #include "../Algorithms.h"
 
 class RR : public Algorithm {
 public:
-    std::deque<Process*> ready_queue;
-    uint32_t quantum_slice;
-    uint32_t slice_used;
+  std::deque<Process *> ready_queue;
+  uint32_t quantum_slice;
+  uint32_t slice_used;
 
-    RR(uint32_t _quantum_slice)
-        : quantum_slice(_quantum_slice), slice_used(0) {}
+  RR(uint32_t _quantum_slice) : quantum_slice(_quantum_slice), slice_used(0) {}
 
-    Process* step(int current_time, Process* running, std::vector<Process*> arrived) override;
+  Process *step(int current_time, Process *running,
+                std::vector<Process *> arrived) override;
 };
 #endif
