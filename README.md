@@ -42,7 +42,7 @@ sudo apt install cmake ninja-build build-essential \
 
 **Arch / Manjaro**
 ```bash
-sudo pacman -S cmake ninja base-devel \
+sudo pacman -S --needed cmake ninja base-devel \
   libx11 libxrandr libxinerama libxcursor libxi mesa
 ```
 
