@@ -30,7 +30,7 @@ brew install cmake
 brew install ninja
 ```
 
-### Linux (Ubuntu/Debian)
+### Linux
 * __GCC 13+ or Clang 16+__
 * __CMake__ *(via package manager)*
 * __Ninja__ *(via package manager)*
