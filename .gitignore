@@ -23,6 +23,7 @@ CMakeUserPresets.json
 
 # External projects
 *-prefix/
+.zed/
 
 ### macOS ###
 # General
