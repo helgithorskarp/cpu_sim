@@ -28,6 +28,12 @@ Process* SJF::step(int current_time, Process* running, std::vector<Process*> arr
         }
     }
 
+    // FIX: existing_process is now deque and processes are correctly removed
+    existing_procceses.erase(
+        std::remove(existing_procceses.begin(), existing_procceses.end(), new_candidate),
+        existing_procceses.end()
+    );
+
     /// update the remaining time of the running process
     /// and set the response time if its the process has never been on the cpu
     if (new_candidate != nullptr) {

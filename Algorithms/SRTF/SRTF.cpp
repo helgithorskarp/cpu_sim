@@ -15,6 +15,8 @@ Process* SRTF::step(int current_time, Process* running, std::vector<Process*> ar
     /// running proccess
 
     if (!is_cpu_empty) {
+        if (new_candidate != running)
+            existing_procceses.push_back(running);
         for (auto& p : arrived) {
             if (p->remaining_time > 0 && p->remaining_time < new_candidate->remaining_time) {
                 new_candidate = p;
@@ -34,6 +36,11 @@ Process* SRTF::step(int current_time, Process* running, std::vector<Process*> ar
             }
         }
     }
+
+    existing_procceses.erase(
+        std::remove(existing_procceses.begin(), existing_procceses.end(), new_candidate),
+        existing_procceses.end()
+    );
 
     /// update the remaining time of the running process
     /// and set the response time if its the process has never been on the cpu

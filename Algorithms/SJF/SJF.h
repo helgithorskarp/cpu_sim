@@ -1,14 +1,15 @@
 #ifndef SJF_H
 #define SJF_H
-#include <vector>
+#include <deque>
+#include <algorithm>
 #include "../Algorithms.h"
 
 class SJF : public Algorithm {
     public:
-        std::vector<Process*> existing_procceses;
+        std::deque<Process*> existing_procceses;
 
         /// takes in no arguments, simply just runs the job with shortest burst
-        SJF() {}; 
+        SJF() {};
 
         Process* step(int current_time, Process* running, std::vector<Process*> arrived) override;
 };
