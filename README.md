@@ -4,6 +4,12 @@ A C++23 CPU scheduling visualizer using ImGui and GLFW.
 
 ## Prerequisites
 
+* Clone the repository
+```bash
+git clone https://github.com/helgithorskarp/cpu_sim.git
+cd cpu_sim
+```
+
 ### Windows
 * __MSVC 17.4+__ *(Visual Studio 2022)*
 * [__CMake (direct link)__](https://cmake.org/download/)
