@@ -81,3 +81,13 @@ cmake --build build
 * **UI.cpp**: ImGui interface logic.
 * **cpu.cpp**: Simulation engine.
 * **Algorithms/**: Logic for FCFS, SJF, SRTF, RR, and Priority.
+
+## Notes
+
+Not sure if this works anywhere other than Alex's setup with Neovim on Arch,
+but create a symlink in `/cpu_sim` pointing to `/build/compile_commands.json`
+after building to hint your editor about external dependencies.
+
+```bash
+ln -s build/compile_commands.json .
+```
