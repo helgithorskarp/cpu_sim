@@ -39,6 +39,7 @@ namespace CpuSimUI {
     void SetDockspace();
     int CreateProcess(std::string name, int arrival_time, int burst_time);
     int StartSimulation(Algorithm& algorithm, int total_time);
+    void CalculateTimelineOffset();
     void RenderUI();
 }
 
